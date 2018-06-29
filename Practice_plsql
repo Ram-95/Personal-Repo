@@ -1,0 +1,352 @@
+set serveroutput on;
+
+create table &name (id integer primary key, name varchar(15));
+
+select * from users;    
+
+--------------------------------------------------------------------------------------------------------------
+-- Creating Procedure to Insert values into Users Table
+
+create or replace procedure Insert_User
+(id in integer, name in varchar)
+is
+begin
+insert into users values(id, name);
+end;
+/
+
+-- Calling Procedure to Insert Values
+begin
+Insert_User(&id, '&name');
+end;
+/
+
+execute Insert_User(117, 'John Wick');
+
+select * from users;
+
+---------------------------------------------------------------------------------------------------------------------------------
+-- Factorial Funciton Creation
+create or replace function facto(n in number)
+return number
+is
+f number(18) := 1;
+begin
+    for i in 1..n loop
+    f := f * i;  
+    end loop;
+    return f;
+end;
+/
+
+-- Factorial Function Calling
+begin
+dbms_output.put_line('Factorial Value of ' || &n  || ' is: ' || facto(&n));
+end;
+/
+
+set serveroutput on;
+execute dbms_output.put_line(facto(&p));
+
+alter table users add constraint users_pk primary key(id);
+
+select * from user_constraints;
+
+select * from tab;
+
+commit;
+
+
+-- Function to count no of records in cars2 table -- extended to all tables
+create or replace function count_rows(t_name in VARCHAR)
+return number
+is
+count_rows integer;
+begin
+select count(*) into count_rows from t_name;
+return count_rows;
+end;
+/
+
+begin
+dbms_output.put_line('No of records is: ' || count_rows('cars2'));
+end;
+/
+
+select count(*) from tab where tname = upper('&tname');
+
+
+
+
+
+
+select count(*) from &tname ;
+
+select * from user_tab_columns where table_name = upper('&t_name'); -- To find the no of columns in a table
+
+---------------------------------------------------------------------------------------------------------------------------------
+set SERVEROUTPUT ON;
+
+select * from cars2;
+
+declare
+cars2_rec cars2%rowtype;
+begin
+    select * into cars2_rec from cars2 where car_id = 125;
+    dbms_output.put_line('ID: ' || cars2_rec.car_id || ' Car_model: ' || cars2_rec.car_model);
+end;
+/
+--- Creating Cursor : Create -> Open -> Fetch -> Close
+declare
+cars2_id CARS2.CAR_ID%type;
+cars2_name cars2.car_model%type;
+cursor cars2_cur is
+    select car_id, car_model from cars2;
+begin
+    open cars2_cur;
+    loop
+        fetch cars2_cur into cars2_id, cars2_name;
+        exit when cars2_cur%notfound;
+        dbms_output.put_line('Car Id: ' || cars2_id ||' Car Name: ' || cars2_name);
+    end loop ;
+    close cars2_cur;
+end;
+/
+---- Iterating the table (without using cursors)
+begin
+    for i in (select car_id, car_model from cars2) loop
+        dbms_output.put_line('Car Id: ' || i.car_id || ' Car Name: ' || i.car_model);
+    end loop;
+end;
+/
+
+
+-- Exceptions
+
+declare
+    cars_id cars2.car_id%type := &n;
+    cars_name cars2.car_model%type;
+begin
+    select car_model into cars_name from cars2 where CAR_ID = cars_id;
+    dbms_output.put_line('The Reqd Car Model is: ' || cars_name);
+    exception
+    when no_data_found then dbms_output.put_line('No Such Record Exists!!');
+    when others then dbms_output.put_line('Error!');
+end;
+/
+
+select * from cars2;
+
+insert into cars2 values(&car_id, '&car_model', '&cost', sysdate, '&engine');
+
+update cars2 set cost = '$10000' where cost = '$cost';
+
+--- Trigger
+create or replace trigger old_new_cost
+before delete or insert or update on cars2
+for each row
+when(NEW.car_id > 0)
+declare
+    new_name cars2.cost%type;
+begin
+    dbms_output.put_line('Old Cost: ' || :OLD.cost);
+    dbms_output.put_line('New Cost: ' || :NEW.cost);
+end;
+/
+
+declare
+    new_cost cars2.cost%type := '$12500';
+    tot_count integer;
+begin
+    update cars2 set COST = new_cost where car_id = 14;
+    if sql%notfound then
+        dbms_output.put_line('No Rows Updated.');
+    elsif sql%found then
+        tot_count := sql%rowcount;
+        dbms_output.put_line(tot_count || ' rows updated.');
+    end if;
+end;
+/
+
+select * from cars2;
+
+rollback;
+
+
+declare
+    car_name cars2.car_model%type;
+begin
+    select car_model into car_name from cars2 where car_id = &id;
+    dbms_output.put_line('The car name is: ' || car_name);
+    
+    exception
+        when no_data_found then
+        dbms_output.put_line('No Such Record Exists');
+        when others then
+        dbms_output.put_line('Error!!');
+end;
+/
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+--- Packages
+--- Declaring the Package Structure
+create or replace package c_package as
+    -- Add a car
+    procedure add_car(c_id cars2.car_id%type, 
+    c_name cars2.car_model%type, 
+    c_engine cars2.engine%type, 
+    c_manuf_date cars2.manuf_date%type, c_cost cars2.cost%type);
+    
+    --Delete a Car
+    procedure del_car(c_id cars2.car_id%type);
+    
+    --list all 
+    procedure list_cars;
+end c_package;
+/
+
+----- Defining the Package body
+create or replace package body c_package as
+    procedure add_car(c_id cars2.car_id%type, 
+    c_name cars2.car_model%type, 
+    c_engine cars2.engine%type, 
+    c_manuf_date cars2.manuf_date%type, c_cost cars2.cost%type)
+    is
+    begin
+        insert into cars2 values(c_id, c_name, c_engine, c_manuf_date, c_cost);
+    end add_car;
+    
+    procedure del_car(c_id cars2.car_id%type)
+    is
+    begin
+        delete from cars2 where car_id = c_id;
+    end del_car;
+    
+    procedure list_cars
+    is 
+    begin
+        for i in (select cars2.car_model from cars2) loop
+            dbms_output.put_line('Car Name: ' || i.car_model);
+        end loop;
+    end list_cars;
+    
+end c_package;
+/
+
+select * from cars2;
+--- Calling the Package ----------------------------------------------------------------------------
+declare
+    id_car cars2.car_id%type := 25;
+begin
+    C_PACKAGE.ADD_CAR(100, 'Lamborghini', 'V10', '14-FEB-2014', '$85000');
+    C_PACKAGE.DEL_CAR(id_car);
+    C_PACKAGE.ADD_CAR(255, 'La Ferrari', 'V12', '25-MAR-2017', '$250000');
+    C_PACKAGE.ADD_CAR(255, 'Buggati Veyron', 'V16', sysdate, '$2250000');
+    C_PACKAGE.LIST_CARS;
+end;
+/
+
+--- Procedure to iterate through all rows in a table -----------------------------------------------------------------------------
+create or replace procedure Table_Iterator
+is
+begin
+    for i in (select  car_model, engine from cars2) loop
+        dbms_output.put_line(i.car_model || ' has ' || i.engine || ' engine.');
+    end loop;
+end;
+/
+
+begin
+Table_Iterator;
+end;
+/
+
+execute Table_Iterator;
+
+
+------ To know the tables in our user
+declare
+n_count integer ;
+begin
+select count(*) into n_count from tab;
+DBMS_OUTPUT.PUT_LINE(user || ' has ' || n_count || ' Tables');
+for i in (select tname from tab) loop
+    dbms_output.put_line(i.tname);
+end loop;
+end;
+/
+
+--- Procedure to print Prime Numbers
+create or replace procedure prime_num(n_range in number)
+is
+flag number;
+begin
+for i in 2..(n_range) loop
+    flag := 0;
+    for j in 2..(ceil(i/2)) loop
+        if mod(i,j) = 0 then
+            flag := 1;
+            exit;
+        end if;
+    end loop;
+    if flag = 0 then
+    dbms_output.put_line('Value: ' || i);
+    end if;
+end loop;   
+end;
+/
+
+-- Calling procedure
+begin
+prime_num(25);
+end;
+/
+
+execute prime_num(30);
+
+declare
+car_names cars2%rowtype;
+begin
+    select * into car_names from cars2 where cars2.CAR_ID = &n;
+    dbms_output.put_line('The Cost of ' || car_names.car_model || ' is ' ||car_names.cost);    
+    
+    EXCEPTION
+    when no_data_found then dbms_output.put_line('No Matching Data');
+end;
+/
+
+select * from users;
+desc users;
+
+create or replace procedure type1_scd(new_id in integer, new_name in varchar)
+is
+flag integer;
+begin
+flag := 0;
+    for i in (select distinct id from users) loop
+    --flag := 0;
+        if (i.id = new_id) then -- checking if id matches with any of the id's present in table; if matches flag = 1
+            flag := 1;
+            if flag = 1 then 
+                update users set users.name = new_name where users.id = new_id;
+                dbms_output.put_line('RECORDS UPDATED SUCCESSFULLY..');
+                exit; -- exit the loop after inserting a record.
+            end if;
+        end if;
+    end loop;
+        
+    if flag = 0 then -- if there are no matching records, then we have to insert into table
+        insert into users values(new_id, new_name);
+        dbms_output.put_line('RECORDS INSERTED SUCCESSFULLY..');
+    end if;
+end;
+/
+
+desc users;
+
+select * from users order by id;
+
+execute type1_scd(3,'Kalyan');
+
+rollback;
